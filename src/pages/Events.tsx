@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Clock, Edit2, MapPin, Plus, Users } from "lucide-react";
+import { CalendarDays, Clock, Edit2, MapPin, Plus, Users, Trash2 } from "lucide-react";
 import Badge from "../components/ui/Badge";
-import { fetchEvents, registerForEvent, saveEvent as persistEvent } from "../lib/api";
+import { fetchEvents, registerForEvent, saveEvent as persistEvent, deleteEvent } from "../lib/api";
 import type { LibraryEvent } from "../types";
 import type { AuthSession } from "../types/auth";
 
@@ -33,6 +33,8 @@ export default function Events({ canManage, session }: { canManage: boolean; ses
   const [editing, setEditing] = useState<LibraryEvent | null>(null);
   const [form, setForm] = useState<EventForm>({ ...emptyForm });
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<LibraryEvent | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
@@ -65,6 +67,14 @@ export default function Events({ canManage, session }: { canManage: boolean; ses
       forceUpdate(n => n + 1);
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not register"); }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try { await deleteEvent(session, deleteTarget.id); setEvents(cur => cur.filter(e => e.id !== deleteTarget.id)); setDeleteTarget(null); }
+    catch (err) { setError(err instanceof Error ? err.message : "Could not delete"); setDeleteTarget(null); }
+    finally { setDeleting(false); }
   }
 
   const typeColors: Record<string, string> = {
@@ -107,9 +117,14 @@ export default function Events({ canManage, session }: { canManage: boolean; ses
                   </span>
                 </div>
                 {canManage && (
-                  <button onClick={() => openEdit(event)} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0">
-                    <Edit2 size={14} />
-                  </button>
+                  <div className="flex gap-1.5 items-center shrink-0">
+                    <button onClick={() => openEdit(event)} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => setDeleteTarget(event)} className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-red-600 hover:text-red-700 shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -181,6 +196,21 @@ export default function Events({ canManage, session }: { canManage: boolean; ses
               <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90">{editing ? "Update" : "Create"}</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(239,68,68,0.12)" }}><Trash2 size={22} style={{ color: "#ef4444" }} /></div>
+            <h3 className="text-base font-bold text-center text-foreground mb-1">Delete Event?</h3>
+            <p className="text-sm text-center text-muted-foreground mb-5">Are you sure you want to delete <strong className="text-foreground">"{deleteTarget.title}"</strong>? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-lg py-2.5 text-sm font-medium" style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "transparent" }}>Cancel</button>
+              <button onClick={confirmDelete} disabled={deleting} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#ef4444" }}>{deleting ? "Deleting..." : "Delete"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

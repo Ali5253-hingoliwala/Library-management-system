@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { MembersService } from "./members.service";
 import { CreateMemberDto } from "./dto/create-member.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -40,9 +40,10 @@ export class MembersController {
   }
 
   @Delete(":id")
+  @HttpCode(204)
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  remove(@Param("id") id: string) {
-    return this.membersService.remove(id);
+  @Roles(UserRole.ADMIN, UserRole.LIBRARIAN)
+  async remove(@Param("id") id: string) {
+    await this.membersService.remove(id);
   }
 }

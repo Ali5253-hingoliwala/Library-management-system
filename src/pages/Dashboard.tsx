@@ -9,7 +9,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 
 const COLORS = ["#c8843a", "#0f2640", "#2e7d6b", "#7c3d8a", "#c0392b", "#e67e22", "#27ae60"];
 
-export default function Dashboard({ session }: { canManage: boolean; session: AuthSession }) {
+export default function Dashboard({ canManage, session }: { canManage: boolean; session: AuthSession }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loans, setLoans] = useState<BorrowingRecord[]>([]);
@@ -17,10 +17,11 @@ export default function Dashboard({ session }: { canManage: boolean; session: Au
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([fetchBooks(session), fetchMembers(session), fetchBorrowing(session), fetchEvents()])
+    const membersFetch = canManage ? fetchMembers(session) : Promise.resolve([] as Member[]);
+    Promise.all([fetchBooks(session), membersFetch, fetchBorrowing(session), fetchEvents()])
       .then(([b, m, l, e]) => { setBooks(b); setMembers(m); setLoans(l); setEvents(e); })
       .catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load dashboard"));
-  }, [session.accessToken]);
+  }, [session.accessToken, canManage]);
 
   const active = loans.filter((loan) => loan.status === "active");
   const overdue = loans.filter((loan) => loan.status === "overdue");

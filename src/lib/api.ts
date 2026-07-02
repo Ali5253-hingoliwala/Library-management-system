@@ -19,8 +19,10 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     throw new Error(message ?? `Request failed with status ${response.status}`);
   }
 
-  if (response.status === 204) return undefined as T;
-  return response.json();
+  if (response.status === 204 || response.headers.get("content-length") === "0") return undefined as T;
+  const text = await response.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text);
 }
 
 function toDateOnly(value: unknown) {
@@ -238,4 +240,12 @@ export async function fetchNotifications(session: AuthSession): Promise<import("
     });
     return notes;
   }
+}
+
+export async function deleteMember(session: AuthSession, id: string) {
+  return apiRequest<void>(`/members/${id}`, { method: "DELETE", token: auth(session) });
+}
+
+export async function deleteEvent(session: AuthSession, id: string) {
+  return apiRequest<void>(`/events/${id}`, { method: "DELETE", token: auth(session) });
 }

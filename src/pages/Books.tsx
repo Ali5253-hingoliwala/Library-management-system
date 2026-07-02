@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Edit2, Plus, Search, Send, User, Calendar, Layers, LayoutGrid, List, Filter, X } from "lucide-react";
-import { fetchBooks, requestBook, saveBook as persistBook } from "../lib/api";
+import { BookOpen, Edit2, Plus, Search, Send, User, Calendar, Layers, LayoutGrid, List, Filter, X, Trash2 } from "lucide-react";
+import { fetchBooks, requestBook, saveBook as persistBook, deleteBook } from "../lib/api";
 import type { Book } from "../types";
 import type { AuthSession } from "../types/auth";
 
@@ -31,7 +31,7 @@ function genreColor(genre: string): [string, string] {
     const idx = Object.keys(genreColorMap).length % GENRE_PALETTE.length;
     genreColorMap[genre] = GENRE_PALETTE[idx];
   }
-  return genreColorMap[genre];
+  return genreColorMap[genre]!;
 }
 
 // Mini book-spine avatar
@@ -52,8 +52,10 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
   const [editing, setEditing] = useState<Book | null>(null);
   const [form, setForm] = useState<BookForm>(emptyForm);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
@@ -103,6 +105,14 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
       setBooks((cur) => cur.map((item) => item.id === book.id ? { ...item, availableCopies: Math.max(0, item.availableCopies - 1), status: item.availableCopies - 1 <= 0 ? "borrowed" : "available" } : item));
     } catch (err) { setError(err instanceof Error ? err.message : "Could not request this book"); }
     finally { setRequestingId(null); }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try { await deleteBook(session, deleteTarget.id); setBooks(cur => cur.filter(b => b.id !== deleteTarget.id)); setDeleteTarget(null); }
+    catch (err) { setError(err instanceof Error ? err.message : "Could not delete"); setDeleteTarget(null); }
+    finally { setDeleting(false); }
   }
 
   const available = books.filter(b => b.status === "available").length;
@@ -297,11 +307,14 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
                       {/* Action */}
                       <td className="px-4 py-3">
                         {canManage ? (
-                          <button onClick={() => openEdit(book)}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:scale-[1.03]"
-                            style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "var(--card)" }}>
-                            <Edit2 size={12} /> Edit
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => openEdit(book)}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:scale-[1.03]"
+                              style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "var(--card)" }}>
+                              <Edit2 size={12} /> Edit
+                            </button>
+                            <button onClick={() => setDeleteTarget(book)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all hover:scale-[1.03]" style={{ border: "1px solid rgba(239,68,68,0.4)", color: "#ef4444", background: "rgba(239,68,68,0.08)" }}><Trash2 size={11} /> Delete</button>
+                          </div>
                         ) : (
                           <button onClick={() => handleRequest(book)}
                             disabled={book.availableCopies < 1 || requestingId === book.id || requested}
@@ -391,13 +404,16 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
                     </div>
 
                     {/* Action */}
-                    <div className="pt-1" style={{ borderTop: "1px solid var(--border)" }}>
+                    <div className="pt-1 flex flex-col gap-1.5" style={{ borderTop: "1px solid var(--border)" }}>
                       {canManage ? (
-                        <button onClick={() => openEdit(book)}
-                          className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-colors"
-                          style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "var(--card)" }}>
-                          <Edit2 size={12} /> Edit Book
-                        </button>
+                        <>
+                          <button onClick={() => openEdit(book)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-colors"
+                            style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "var(--card)" }}>
+                            <Edit2 size={12} /> Edit Book
+                          </button>
+                          <button onClick={() => setDeleteTarget(book)} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-colors" style={{ border: "1px solid rgba(239,68,68,0.4)", color: "#ef4444", background: "rgba(239,68,68,0.08)" }}><Trash2 size={12} /> Delete Book</button>
+                        </>
                       ) : (
                         <button onClick={() => handleRequest(book)}
                           disabled={book.availableCopies < 1 || requestingId === book.id || requested}
@@ -408,7 +424,7 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
                               ? { background: "var(--muted)", color: "var(--muted-foreground)", opacity: 0.5, cursor: "not-allowed" }
                               : { background: "var(--accent)", color: "#fff" }}>
                           <Send size={12} />
-                          {requested ? "Requested ✓" : requestingId === book.id ? "Requesting..." : "Request Book"}
+                          {requested ? "Requested ✓" : requestingId === book.id ? "..." : "Request"}
                         </button>
                       )}
                     </div>
@@ -510,6 +526,21 @@ export default function Books({ canManage, session }: { canManage: boolean; sess
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(239,68,68,0.12)" }}><Trash2 size={22} style={{ color: "#ef4444" }} /></div>
+            <h3 className="text-base font-bold text-center text-foreground mb-1">Delete Book?</h3>
+            <p className="text-sm text-center text-muted-foreground mb-5">Are you sure you want to delete <strong className="text-foreground">"{deleteTarget.title}"</strong>? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 rounded-lg py-2.5 text-sm font-medium" style={{ border: "1px solid var(--border)", color: "var(--foreground)", background: "transparent" }}>Cancel</button>
+              <button onClick={confirmDelete} disabled={deleting} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#ef4444" }}>{deleting ? "Deleting..." : "Delete"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

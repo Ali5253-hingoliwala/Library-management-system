@@ -40,8 +40,8 @@ let BooksController = class BooksController {
     update(id, dto) {
         return this.booksService.update(id, dto);
     }
-    remove(id) {
-        return this.booksService.remove(id);
+    async remove(id) {
+        await this.booksService.remove(id);
     }
 };
 exports.BooksController = BooksController;
@@ -88,12 +88,13 @@ __decorate([
 ], BooksController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(":id"),
+    (0, common_1.HttpCode)(204),
     (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.ADMIN),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.ADMIN, user_schema_1.UserRole.LIBRARIAN),
     __param(0, (0, common_1.Param)("id")),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], BooksController.prototype, "remove", null);
 exports.BooksController = BooksController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

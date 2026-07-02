@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { EventsService } from "./events.service";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -45,8 +45,9 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
-  remove(@Param("id") id: string) {
-    return this.eventsService.remove(id);
+  @HttpCode(204)
+  @Roles(UserRole.ADMIN, UserRole.LIBRARIAN)
+  async remove(@Param("id") id: string) {
+    await this.eventsService.remove(id);
   }
 }

@@ -41,8 +41,8 @@ let EventsController = class EventsController {
     registerForEvent(id, user) {
         return this.eventsService.registerForEvent(id, user.userId);
     }
-    remove(id) {
-        return this.eventsService.remove(id);
+    async remove(id) {
+        await this.eventsService.remove(id);
     }
 };
 exports.EventsController = EventsController;
@@ -92,11 +92,12 @@ __decorate([
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, common_1.Delete)(":id"),
-    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.ADMIN),
+    (0, common_1.HttpCode)(204),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.ADMIN, user_schema_1.UserRole.LIBRARIAN),
     __param(0, (0, common_1.Param)("id")),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], EventsController.prototype, "remove", null);
 exports.EventsController = EventsController = __decorate([
     (0, common_1.Controller)("events"),

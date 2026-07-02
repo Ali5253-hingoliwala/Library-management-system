@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { BooksService } from "./books.service";
 import { CreateBookDto } from "./dto/create-book.dto";
 import { UpdateBookDto } from "./dto/update-book.dto";
@@ -42,9 +42,10 @@ export class BooksController {
   }
 
   @Delete(":id")
+  @HttpCode(204)
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  remove(@Param("id") id: string) {
-    return this.booksService.remove(id);
+  @Roles(UserRole.ADMIN, UserRole.LIBRARIAN)
+  async remove(@Param("id") id: string) {
+    await this.booksService.remove(id);
   }
 }
